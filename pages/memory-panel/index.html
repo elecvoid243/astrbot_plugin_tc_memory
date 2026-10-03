@@ -46,20 +46,22 @@
   const msg = document.getElementById("msg");
   let attempts = 0;
 
-  // user_key 从插件状态接口取（面板登录需要）
+  // user_key 从插件状态接口取（面板登录需要）。/api/v1/plugins/extensions
+  // 需要 dashboard 登录 token（与主框架同为 localStorage.token，同源 iframe 可读）。
   async function loadKey() {
     const el = document.getElementById("keytext");
-    for (const base of ["/api/plug", "/api/v1/plugins/extensions"]) {
-      try {
-        const resp = await fetch(`${base}/astrbot_plugin_tc_memory/status`);
-        const json = await resp.json();
-        const key = json?.data?.user_key;
-        if (key) {
-          el.textContent = key;
-          return;
-        }
-      } catch { /* 尝试下一个路径 */ }
-    }
+    const token = localStorage.getItem("token") || "";
+    try {
+      const resp = await fetch("/api/v1/plugins/extensions/astrbot_plugin_tc_memory/status", {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+      });
+      const json = await resp.json();
+      const key = json?.data?.user_key;
+      if (key) {
+        el.textContent = key;
+        return;
+      }
+    } catch { /* 落到文件提示 */ }
     el.textContent = "见 data/plugin_data/astrbot_plugin_tc_memory/admin-key 文件";
   }
   document.getElementById("copybtn").onclick = () => {
