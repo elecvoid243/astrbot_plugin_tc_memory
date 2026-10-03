@@ -5,4 +5,6 @@ __pycache__/
 *.pyc
 data/
 .superpowers/
-data/.idea/
+.codegraph/
+.idea/
+AGENTS.md
