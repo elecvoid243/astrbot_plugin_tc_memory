@@ -106,6 +106,40 @@ async def test_probe_also_ensures_knowledge_service():
     assert knowledge_launcher.calls == 1  # 但确实尝试过拉起知识库
 
 
+async def test_probe_also_ensures_panel_service():
+    """panel_enabled 时 probe 连带拉起面板；其失败不影响插件启用。"""
+    core = FlakyHealthCore(fail_times=0)
+    panel_launcher = StubLauncher(succeed=True)
+    cfg = config_from_astrbot({"mode": "local", "panel_enabled": True})
+    runtime = PluginRuntime(
+        cfg=cfg,
+        core=core,
+        knowledge=None,
+        cache=TTLCache(),
+        buffer=CaptureBuffer(),
+        launcher=StubLauncher(),
+        panel_launcher=panel_launcher,
+    )
+
+    assert await runtime.probe() is True
+    assert panel_launcher.calls == 1
+
+
+def test_write_panel_instances(tmp_path):
+    """面板实例配置从插件的 core_endpoint/core_api_key 生成（单一真源）。"""
+    import json
+
+    from tc_memory.launcher import write_panel_instances
+
+    out = tmp_path / "sub" / "panel-instances.json"
+    write_panel_instances(out, "http://127.0.0.1:8420", "local")
+
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["instances"][0]["gateway_endpoint"] == "http://127.0.0.1:8420"
+    assert data["instances"][0]["api_key"] == "local"
+    assert data["instances"][0]["id"] == "default"
+
+
 # ── launcher 本体（真实子进程 + 真实 HTTP 探测）────────────────
 
 

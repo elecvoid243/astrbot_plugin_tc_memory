@@ -32,6 +32,7 @@ class PluginRuntime:
         agent_done_supported: bool = True,
         launcher=None,
         knowledge_launcher=None,
+        panel_launcher=None,
     ):
         self.cfg = cfg
         self.core = core
@@ -44,6 +45,8 @@ class PluginRuntime:
         self.launcher = launcher
         # 知识库服务启动器（knowledge_enabled 且能找到打包产物时为非 None）
         self.knowledge_launcher = knowledge_launcher
+        # 管理面板启动器（panel_enabled 时为非 None）
+        self.panel_launcher = panel_launcher
         self._enabled = False
         self._auth_backoff_until = 0.0
 
@@ -82,13 +85,18 @@ class PluginRuntime:
         return self._mark_enabled()
 
     async def _ensure_knowledge(self) -> None:
-        if self.knowledge_launcher is None:
-            return
-        if not await self.knowledge_launcher.ensure_running():
+        if self.knowledge_launcher is not None and not (
+            await self.knowledge_launcher.ensure_running()
+        ):
             logger.warning(
                 "tc_memory: 知识库服务启动失败，wiki/codegraph 工具不可用"
                 "（记忆功能不受影响）"
             )
+        # 面板与知识库相互独立，各自 fail-soft
+        if self.panel_launcher is not None and not (
+            await self.panel_launcher.ensure_running()
+        ):
+            logger.warning("tc_memory: 管理面板启动失败（记忆功能不受影响）")
 
     def _mark_enabled(self) -> bool:
         self._enabled = True

@@ -70,3 +70,22 @@ async def test_status_no_pid_without_launcher_or_dead_proc():
 
     rt2 = make_runtime(launcher=FakeLauncher(FakeProc(alive=False)))
     assert (await build_status(rt2))["pid"] is None
+
+
+class FakePanelLauncher:
+    def __init__(self, healthy):
+        self._healthy_value = healthy
+
+    async def _healthy(self):
+        return self._healthy_value
+
+
+async def test_status_includes_panel_running():
+    rt = make_runtime()
+    rt.panel_launcher = FakePanelLauncher(True)
+    s = await build_status(rt)
+    assert s["panel_running"] is True
+
+    rt2 = make_runtime()
+    rt2.panel_launcher = None
+    assert (await build_status(rt2))["panel_running"] is None

@@ -30,6 +30,8 @@ from .tc_memory.launcher import (
     build_launch_command,
     resolve_gateway_paths,
     resolve_knowledge_paths,
+    resolve_panel_paths,
+    write_panel_instances,
 )
 from .tc_memory.llm_resolve import provider_to_dict, resolve_llm_from_providers
 from .tc_memory.runtime import PluginRuntime
@@ -86,6 +88,7 @@ class TcMemoryPlugin(Star):
             agent_done_supported=AGENT_DONE_SUPPORTED,
             launcher=self._build_launcher(),
             knowledge_launcher=self._build_knowledge_launcher(),
+            panel_launcher=self._build_panel_launcher(),
         )
         self._clear_confirmer = ClearConfirmer()
 
@@ -193,6 +196,45 @@ class TcMemoryPlugin(Star):
             log_path=data_dir / "knowledge.log",
         )
 
+    PANEL_PORT = 8125
+
+    def _build_panel_launcher(self) -> LocalGatewayLauncher | None:
+        """local 模式 + panel_enabled：内嵌管理面板（WebUI）。
+
+        实例配置从插件的 core_endpoint/core_api_key 生成（单一真源）。
+        """
+        if self.cfg.mode != "local" or not self.cfg.panel_enabled:
+            return None
+        paths = resolve_panel_paths(Path(__file__).resolve())
+        if paths is None:
+            logger.warning("tc_memory: 未找到 external_tools/tc-memory-panel 打包产物")
+            return None
+        node_exe, panel_dir = paths
+        data_dir = (
+            Path(__file__).resolve().parents[2]
+            / "plugin_data"
+            / "astrbot_plugin_tc_memory"
+        )
+        instances_file = data_dir / "panel-instances.json"
+        write_panel_instances(
+            instances_file, self.cfg.core_endpoint, self.cfg.core_api_key
+        )
+        return LocalGatewayLauncher(
+            command=[str(node_exe), str(panel_dir / "dist" / "index.js")],
+            cwd=panel_dir,
+            env={
+                "PORT": str(self.PANEL_PORT),
+                "UI_DIST_DIR": str(panel_dir / "web-dist"),
+                "METADATA_INSTANCES_CONFIG": str(instances_file),
+                "KNOWLEDGE_SERVICE_URL": self.cfg.knowledge_endpoint,
+                # 本地无 proxy，跳过 LLM binding 同步（best-effort 逻辑直接关掉）
+                "KNOWLEDGE_LLM_BINDING_SYNC": "false",
+                "LOG_FORMAT": "pretty",
+            },
+            health_url=f"http://127.0.0.1:{self.PANEL_PORT}/",
+            log_path=data_dir / "panel.log",
+        )
+
     @filter.on_plugin_loaded()
     async def _on_loaded(self, metadata=None):
         # 框架以 handler(metadata) 形式调用，必须接收该位置参数
@@ -273,6 +315,8 @@ class TcMemoryPlugin(Star):
             await self.runtime.launcher.shutdown()
         if self.runtime.knowledge_launcher:
             await self.runtime.knowledge_launcher.shutdown()
+        if self.runtime.panel_launcher:
+            await self.runtime.panel_launcher.shutdown()
         await self.runtime.core.aclose()
         if self.runtime.knowledge:
             await self.runtime.knowledge.aclose()

@@ -20,6 +20,7 @@ def test_config_defaults_local_mode():
     assert cfg.engine_persona_trigger_every_n == 50
     assert cfg.engine_recall_max_results == 5
     assert cfg.engine_recall_score_threshold == 0.3
+    assert cfg.panel_enabled is True
 
 
 def test_config_reads_explicit_values():

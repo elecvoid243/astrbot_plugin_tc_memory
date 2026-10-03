@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 NODE_REL = Path("external_tools") / "codegraph-win32-x64" / "node.exe"
 GATEWAY_REL = Path("external_tools") / "tc-memory-gateway"
 KNOWLEDGE_REL = Path("external_tools") / "tc-memory-knowledge"
+PANEL_REL = Path("external_tools") / "tc-memory-panel"
 
 
 def resolve_external_tools_root(start_from: Path) -> Path | None:
@@ -47,6 +48,42 @@ def resolve_gateway_paths(start_from: Path) -> tuple[Path, Path] | None:
     if node.is_file() and (gateway / "dist" / "server.js").is_file():
         return node, gateway
     return None
+
+
+def resolve_panel_paths(start_from: Path) -> tuple[Path, Path] | None:
+    """返回 (node_exe, panel_dir)。找不到打包产物返回 None。"""
+    root = resolve_external_tools_root(start_from)
+    if root is None:
+        return None
+    node = root / "codegraph-win32-x64" / "node.exe"
+    panel = root / "tc-memory-panel"
+    if node.is_file() and (panel / "dist" / "index.js").is_file():
+        return node, panel
+    return None
+
+
+def write_panel_instances(out_path: Path, gateway_endpoint: str, api_key: str) -> None:
+    """生成面板实例配置（单一真源：插件的 core_endpoint/core_api_key）。"""
+    import json
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(
+            {
+                "instances": [
+                    {
+                        "id": "default",
+                        "name": "本地记忆",
+                        "gateway_endpoint": gateway_endpoint,
+                        "api_key": api_key,
+                    }
+                ]
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def resolve_knowledge_paths(start_from: Path) -> tuple[Path, Path] | None:
@@ -174,7 +211,7 @@ class LocalGatewayLauncher:
         )
         self.spawned_count += 1
         logger.info(
-            "tc_memory: 已启动内嵌 gateway（pid=%s）: %s",
+            "tc_memory: 已启动内嵌服务（pid=%s）: %s",
             self._proc.pid,
             self._command[0],
         )

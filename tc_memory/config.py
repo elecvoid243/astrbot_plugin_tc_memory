@@ -34,6 +34,7 @@ class PluginConfig:
     engine_persona_trigger_every_n: int = 50
     engine_recall_max_results: int = 5
     engine_recall_score_threshold: float = 0.3
+    panel_enabled: bool = True  # 内嵌管理面板（WebUI）
 
 
 def config_from_astrbot(cfg: dict[str, Any]) -> PluginConfig:

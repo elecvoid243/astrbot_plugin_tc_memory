@@ -25,7 +25,13 @@ async def build_status(runtime: PluginRuntime) -> dict:
         if proc is not None and proc.poll() is None:
             pid = proc.pid
 
+    panel_launcher = getattr(runtime, "panel_launcher", None)
+    panel_running = None
+    if panel_launcher is not None:
+        panel_running = await panel_launcher._healthy()
+
     return {
+        "panel_running": panel_running,
         "mode": runtime.cfg.mode,
         "enabled": runtime.enabled,
         "running": running,

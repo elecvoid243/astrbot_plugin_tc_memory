@@ -64,6 +64,15 @@
       "mode": "local"
     }
   },
+  "panel_enabled": {
+    "type": "bool",
+    "default": true,
+    "condition": {
+      "mode": "local"
+    },
+    "description": "内嵌管理面板",
+    "hint": "自动启动本地管理面板（WebUI），在插件的「记忆管理」页面中打开"
+  },
   "core_endpoint": {
     "type": "string",
     "default": "http://127.0.0.1:8420",
