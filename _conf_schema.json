@@ -1,0 +1,157 @@
+{
+  "mode": {
+    "type": "string",
+    "default": "local",
+    "options": [
+      "local",
+      "server"
+    ],
+    "description": "部署模式",
+    "hint": "local = 插件自动启动内嵌 standalone 服务（需配置下方提炼 LLM 三项）；server = 连接远端服务器上已部署的记忆服务"
+  },
+  "local_llm_provider_id": {
+    "type": "string",
+    "default": "",
+    "_special": "select_provider",
+    "condition": {
+      "mode": "local"
+    },
+    "description": "提炼 LLM（选择 provider）",
+    "hint": "从 AstrBot 已配置的 provider 中选择，地址/Key/模型自动读取，无需手动填写。local 模式必填，否则记忆提炼不可用"
+  },
+  "engine_extraction_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "自动提炼记忆",
+    "hint": "关闭后只记录对话原文，不提炼长期记忆",
+    "condition": {
+      "mode": "local"
+    }
+  },
+  "engine_pipeline_every_n": {
+    "type": "int",
+    "default": 5,
+    "description": "提炼触发轮数",
+    "hint": "每积累 N 轮对话触发一次提炼：越小越及时，但 LLM 调用越频繁",
+    "condition": {
+      "mode": "local"
+    }
+  },
+  "engine_persona_trigger_every_n": {
+    "type": "int",
+    "default": 50,
+    "description": "画像更新间隔（条）",
+    "hint": "每积累 N 条记忆更新一次用户画像",
+    "condition": {
+      "mode": "local"
+    }
+  },
+  "engine_recall_max_results": {
+    "type": "int",
+    "default": 5,
+    "description": "服务端召回条数",
+    "hint": "区别于下方的「客户端召回条数」——这是服务端管线的参数",
+    "condition": {
+      "mode": "local"
+    }
+  },
+  "engine_recall_score_threshold": {
+    "type": "float",
+    "default": 0.3,
+    "description": "服务端召回阈值",
+    "hint": "相关性阈值 0~1，越高越严格",
+    "condition": {
+      "mode": "local"
+    }
+  },
+  "core_endpoint": {
+    "type": "string",
+    "default": "http://127.0.0.1:8420",
+    "description": "记忆服务地址",
+    "hint": "MemoryCore Gateway 地址。local 模式保持默认即可"
+  },
+  "core_api_key": {
+    "type": "string",
+    "default": "local",
+    "description": "服务 API Key",
+    "hint": "server 模式填实例的真实 Key；local 模式保持默认"
+  },
+  "service_id": {
+    "type": "string",
+    "default": "default",
+    "description": "记忆实例 ID",
+    "hint": "对应 Gateway 的 x-tdai-service-id 头；多实例部署时用于路由"
+  },
+  "team_id": {
+    "type": "string",
+    "default": "default",
+    "description": "团队 ID",
+    "hint": "server 模式填面板上创建的 team"
+  },
+  "agent_id": {
+    "type": "string",
+    "default": "default",
+    "description": "Agent ID",
+    "hint": "代表这个 AstrBot 实例本身；server 模式填面板上为它创建的 Agent"
+  },
+  "knowledge_enabled": {
+    "type": "bool",
+    "default": false,
+    "description": "启用知识库",
+    "hint": "开启 Wiki / CodeGraph 检索工具，需要 MemoryKnowledge 服务"
+  },
+  "knowledge_endpoint": {
+    "type": "string",
+    "default": "http://127.0.0.1:8421",
+    "description": "知识库服务地址",
+    "hint": "MemoryKnowledge 服务地址"
+  },
+  "knowledge_wiki_id": {
+    "type": "string",
+    "default": "",
+    "description": "Wiki 实例 ID",
+    "hint": "在面板创建知识库后获得；留空时 wiki 工具会提示先配置"
+  },
+  "knowledge_codegraph_id": {
+    "type": "string",
+    "default": "",
+    "description": "CodeGraph 实例 ID",
+    "hint": "在面板创建代码图谱后获得；留空时 codegraph 工具会提示先配置"
+  },
+  "recall_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "自动召回注入",
+    "hint": "每轮对话前自动检索相关记忆注入上下文"
+  },
+  "capture_enabled": {
+    "type": "bool",
+    "default": true,
+    "description": "自动写回对话",
+    "hint": "每轮对话后把本轮内容写回记忆服务，服务端异步提炼为长期记忆"
+  },
+  "persist_injected_memory": {
+    "type": "bool",
+    "default": false,
+    "description": "注入记忆写入历史",
+    "hint": "关闭（默认）：上下文干净、遗忘立即生效，适合按 token 计费的公网 API；开启：历史字节稳定、前缀 KV 缓存命中率最大，适合自建推理服务（vLLM/SGLang）"
+  },
+  "recall_max_results": {
+    "type": "int",
+    "default": 5,
+    "description": "客户端召回条数",
+    "hint": "每轮对话注入的记忆条数上限（区别于上方的服务端召回条数）"
+  },
+  "recall_timeout_sec": {
+    "type": "int",
+    "default": 3,
+    "description": "召回超时（秒）",
+    "hint": "超时后本轮不注入任何内容，不影响正常聊天"
+  },
+  "user_id_map": {
+    "type": "dict",
+    "default": {},
+    "description": "用户 ID 映射",
+    "hint": "AstrBot 用户 → 记忆系统用户的映射，如 {\"qq_12345\": \"u_zhangsan\"}；留空则自动按发送者 ID 生成独立记忆空间"
+  }
+}
