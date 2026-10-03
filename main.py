@@ -89,6 +89,12 @@ class TcMemoryPlugin(Star):
             launcher=self._build_launcher(),
             knowledge_launcher=self._build_knowledge_launcher(),
             panel_launcher=self._build_panel_launcher(),
+            admin_key_file=(
+                Path(__file__).resolve().parents[2]
+                / "plugin_data"
+                / "astrbot_plugin_tc_memory"
+                / "admin-key"
+            ),
         )
         self._clear_confirmer = ClearConfirmer()
 

@@ -6,7 +6,17 @@
 <title>记忆管理</title>
 <style>
   html, body { margin: 0; height: 100%; background: #f5f5f7; font-family: -apple-system, "PingFang SC", sans-serif; }
-  #frame { width: 100%; height: 100%; border: 0; display: none; }
+  #frame { width: 100%; height: calc(100% - 42px); border: 0; display: none; }
+  #keybar {
+    height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    background: #fff; border-bottom: 1px solid #e5e5ea; font-size: 13px; color: #6e6e73;
+  }
+  #keybar code { color: #1d1d1f; background: #f2f2f7; padding: 2px 8px; border-radius: 6px; }
+  #keybar button {
+    border: 1px solid #d2d2d7; background: #fff; border-radius: 6px; padding: 3px 12px;
+    font-size: 12px; cursor: pointer; color: #1d1d1f;
+  }
+  #keybar button:hover { background: #f2f2f7; }
   #fallback {
     height: 100%; display: flex; flex-direction: column; gap: 12px;
     align-items: center; justify-content: center; color: #6e6e73; font-size: 14px;
@@ -24,6 +34,10 @@
   <div class="spinner"></div>
   <div id="msg">记忆管理面板启动中…</div>
 </div>
+<div id="keybar">
+  <span>user_key：</span><code id="keytext">加载中…</code>
+  <button id="copybtn" type="button">复制</button>
+</div>
 <iframe id="frame" title="记忆管理面板"></iframe>
 <script>
   // 面板地址跟随当前 dashboard 的 hostname：远程访问 AstrBot 时也能连对
@@ -31,6 +45,27 @@
   const frame = document.getElementById("frame");
   const msg = document.getElementById("msg");
   let attempts = 0;
+
+  // user_key 从插件状态接口取（面板登录需要）
+  async function loadKey() {
+    const el = document.getElementById("keytext");
+    for (const base of ["/api/plug", "/api/v1/plugins/extensions"]) {
+      try {
+        const resp = await fetch(`${base}/astrbot_plugin_tc_memory/status`);
+        const json = await resp.json();
+        const key = json?.data?.user_key;
+        if (key) {
+          el.textContent = key;
+          return;
+        }
+      } catch { /* 尝试下一个路径 */ }
+    }
+    el.textContent = "见 data/plugin_data/astrbot_plugin_tc_memory/admin-key 文件";
+  }
+  document.getElementById("copybtn").onclick = () => {
+    navigator.clipboard.writeText(document.getElementById("keytext").textContent);
+  };
+  loadKey();
 
   async function tryLoad() {
     attempts += 1;

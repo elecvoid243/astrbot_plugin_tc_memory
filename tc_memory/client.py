@@ -207,6 +207,20 @@ class TdMemoryClient:
                 return None
             raise
 
+    # ── Meta / 运维（面板引导用）──────────────────────────────
+
+    async def meta_auth_verify(self, user_key: str) -> bool:
+        """校验 user_key 是否合法。注意：非法 key 也是 code=0，须看 data.valid。"""
+        data = await self._post("/v3/meta/auth/verify", {"user_key": user_key})
+        return bool(data.get("valid"))
+
+    async def internal_init_admin(self, username: str, user_key: str) -> dict:
+        """初始化 system_admin（仅 Bearer 鉴权的运维接口；重复初始化报 409）。"""
+        return await self._post(
+            "/v3/internal/meta/user/init-admin",
+            {"username": username, "user_key": user_key},
+        )
+
     async def aclose(self) -> None:
         if self._session and not self._session.closed:
             await self._session.close()

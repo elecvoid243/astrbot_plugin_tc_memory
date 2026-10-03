@@ -31,6 +31,7 @@ async def build_status(runtime: PluginRuntime) -> dict:
         panel_running = await panel_launcher._healthy()
 
     return {
+        "user_key": runtime.admin_key,
         "panel_running": panel_running,
         "mode": runtime.cfg.mode,
         "enabled": runtime.enabled,

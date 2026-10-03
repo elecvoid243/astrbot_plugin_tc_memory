@@ -7,6 +7,7 @@ import asyncio
 import logging
 import time
 
+from .admin_key import ensure_admin_key
 from .cache import TTLCache
 from .capture import CaptureBuffer
 from .client import TdMemoryClient
@@ -33,6 +34,7 @@ class PluginRuntime:
         launcher=None,
         knowledge_launcher=None,
         panel_launcher=None,
+        admin_key_file=None,
     ):
         self.cfg = cfg
         self.core = core
@@ -47,6 +49,9 @@ class PluginRuntime:
         self.knowledge_launcher = knowledge_launcher
         # 管理面板启动器（panel_enabled 时为非 None）
         self.panel_launcher = panel_launcher
+        # local 模式 admin key 持久化文件（None 则不引导）
+        self.admin_key_file = admin_key_file
+        self.admin_key: str | None = None
         self._enabled = False
         self._auth_backoff_until = 0.0
 
@@ -69,6 +74,7 @@ class PluginRuntime:
                 if await self.launcher.ensure_running():
                     try:
                         await self.core.health()
+                        await self._bootstrap_admin_key()
                         await self._ensure_knowledge()
                         return self._mark_enabled()
                     except TDAMError as second_err:
@@ -81,8 +87,24 @@ class PluginRuntime:
             )
             self._enabled = False
             return False
+        await self._bootstrap_admin_key()
         await self._ensure_knowledge()
         return self._mark_enabled()
+
+    async def _bootstrap_admin_key(self) -> None:
+        """local 模式：确保本地实例有可用 admin key（面板登录用）。失败不阻塞。"""
+        if self.cfg.mode != "local" or self.admin_key_file is None:
+            return
+        try:
+            self.admin_key = await ensure_admin_key(self.core, self.admin_key_file)
+            if self.admin_key is None:
+                logger.warning(
+                    "tc_memory: 本地实例已有其他 admin key 且与本插件记录不符，"
+                    "无法自动恢复。如需重置：删除 %s 对应的数据目录后重启",
+                    self.admin_key_file,
+                )
+        except TDAMError as e:
+            logger.warning("tc_memory: admin key 引导失败: %s", e.message[:80])
 
     async def _ensure_knowledge(self) -> None:
         if self.knowledge_launcher is not None and not (
