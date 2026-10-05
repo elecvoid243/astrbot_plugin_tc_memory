@@ -6,10 +6,13 @@ import sys
 避免用户手动重复填写——provider 里已有一份。
 """
 
+from types import SimpleNamespace
+
 from tc_memory.launcher import LocalGatewayLauncher
 from tc_memory.llm_resolve import (
     ResolvedLLM,
     provider_to_dict,
+    providers_pending_initialization,
     resolve_llm_from_providers,
 )
 
@@ -42,6 +45,38 @@ def test_resolve_from_provider_dicts():
 
 def test_resolve_unknown_id_returns_none():
     assert resolve_llm_from_providers([], "missing") is None
+
+
+def test_providers_pending_initialization_only_in_cold_start_window():
+    """冷启动判定：有 provider 配置但实例还没建 → pending。
+
+    AstrBot 冷启动顺序是 plugin_manager.reload() → provider_manager.initialize()，
+    插件加载时只能看到空实例列表。
+    """
+
+    class ColdStartContext:
+        provider_manager = SimpleNamespace(providers_config=[{"id": "p1"}])
+
+    assert providers_pending_initialization(ColdStartContext(), []) is True
+    # 实例已建（热重载路径）→ 不再 pending
+    assert providers_pending_initialization(ColdStartContext(), [object()]) is False
+
+
+def test_providers_pending_initialization_fails_open():
+    """框架内部结构变化、或用户本就没配 provider 时不得无限等待。"""
+
+    class NoManager:
+        pass
+
+    class NoConfigs:
+        provider_manager = SimpleNamespace()
+
+    class EmptyConfigs:
+        provider_manager = SimpleNamespace(providers_config=[])
+
+    assert providers_pending_initialization(NoManager(), []) is False
+    assert providers_pending_initialization(NoConfigs(), []) is False
+    assert providers_pending_initialization(EmptyConfigs(), []) is False
 
 
 def test_resolve_empty_key_list_returns_none():

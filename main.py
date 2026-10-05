@@ -33,7 +33,11 @@ from .tc_memory.launcher import (
     resolve_panel_paths,
     write_panel_instances,
 )
-from .tc_memory.llm_resolve import provider_to_dict, resolve_llm_from_providers
+from .tc_memory.llm_resolve import (
+    provider_to_dict,
+    providers_pending_initialization,
+    resolve_llm_from_providers,
+)
 from .tc_memory.runtime import PluginRuntime
 from .tc_memory.status import build_status
 
@@ -97,6 +101,8 @@ class TcMemoryPlugin(Star):
             ),
         )
         self._clear_confirmer = ClearConfirmer()
+        # 本地服务只启动一次：on_plugin_loaded 会随每个插件加载重复触发
+        self._local_services_started = False
 
         # Dashboard「服务状态」popover 数据源：
         # GET /api/v1/plugins/extensions/astrbot_plugin_tc_memory/status
@@ -244,32 +250,59 @@ class TcMemoryPlugin(Star):
     @filter.on_plugin_loaded()
     async def _on_loaded(self, metadata=None):
         # 框架以 handler(metadata) 形式调用，必须接收该位置参数
-        self._resolve_llm_from_provider()
+        if self._local_services_started:
+            return  # 每个插件加载都会触发本 hook，本地服务只启动一次
+        if not self._apply_llm_env():
+            # 冷启动顺序是 plugin_manager.reload() → provider_manager.initialize()，
+            # 插件加载阶段拿不到 provider 实例；此处若照常启动，子进程会带着空
+            # LLM 配置落地（spawn 之后再 set_env 不生效）→ 推迟到 astrbot_loaded。
+            logger.debug(
+                "tc_memory: provider 尚未实例化，本地服务推迟到 astrbot_loaded"
+            )
+            return
+        self._local_services_started = True
         await self.runtime.probe()
 
-    def _resolve_llm_from_provider(self) -> None:
-        """配置了 local_llm_provider_id 时，从 AstrBot provider 解析连接参数，
-        注入 launcher env（覆盖手动兜底三项）。解析失败并告警（提炼不可用）。"""
-        provider_id = self.cfg.local_llm_provider_id
+    @filter.on_astrbot_loaded()
+    async def _on_astrbot_loaded(self):
+        """冷启动补齐：provider 实例化完成后再解析 LLM 并拉起内嵌服务。"""
+        if self._local_services_started:
+            return
+        self._local_services_started = True
+        self._apply_llm_env(force=True)
+        await self.runtime.probe()
+
+    def _apply_llm_env(self, *, force: bool = False) -> bool:
+        """把所选 provider 的 base_url/api_key/model 注入 launcher env。
+
+        返回 False 只表示「provider 还没实例化，本次无法判定」，调用方须推迟启动
+        本地服务；force=True 时不再推迟，解析不出也照常启动（降级运行，召回/记录
+        不受影响，仅服务端提炼不可用）。
+        """
         launcher = self.runtime.launcher
         kn_launcher = self.runtime.knowledge_launcher
         if launcher is None and kn_launcher is None:
-            return
+            return True
+        providers = [provider_to_dict(p) for p in self.context.get_all_providers()]
+        if not force and providers_pending_initialization(self.context, providers):
+            return False
+        provider_id = self.cfg.local_llm_provider_id
         if not provider_id:
             logger.warning(
                 "tc_memory: local 模式未选择提炼 LLM provider，"
                 "服务端记忆提炼将不可用（召回/记录不受影响）。"
                 "请在插件配置中选择「提炼 LLM」"
             )
-            return
-        providers = [provider_to_dict(p) for p in self.context.get_all_providers()]
+            return True
         resolved = resolve_llm_from_providers(providers, provider_id)
         if resolved is None:
             logger.warning(
-                "tc_memory: 无法从 provider %s 解析 LLM 连接参数，回落手动配置",
+                "tc_memory: provider %s 解析不出 LLM 连接参数"
+                "（api_base / key / model 需齐全且该 provider 已启用），"
+                "服务端记忆提炼将不可用（召回/记录不受影响）",
                 provider_id,
             )
-            return
+            return True
         if launcher is not None:
             launcher.set_env(
                 {
@@ -289,6 +322,7 @@ class TcMemoryPlugin(Star):
         logger.info(
             "tc_memory: 提炼 LLM 使用 provider %s（%s）", provider_id, resolved.model
         )
+        return True
 
     @filter.on_llm_request()
     async def on_llm_request_hook(self, event: AstrMessageEvent, req: ProviderRequest):

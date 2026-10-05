@@ -152,3 +152,112 @@ async def test_remember_command_accepts_multi_word_content(gateway):
         == "请记住：我喜欢美式咖啡 不加糖"
     )
     await plugin.terminate()
+
+
+class _FakeLauncher:
+    """launcher 替身：真 launcher 需要 external_tools 打包产物，测试环境没有。"""
+
+    def __init__(self):
+        self.env: dict[str, str] = {}
+        self.shutdown_called = False
+
+    def set_env(self, updates: dict) -> None:
+        self.env.update(updates)
+
+    async def shutdown(self) -> None:
+        self.shutdown_called = True
+
+
+def _fake_provider():
+    class FakeProvider:
+        provider_config = {  # noqa: RUF012  # 测试替身，类属性即可
+            "id": "deepseek-responses/deepseek-flash",
+            "api_base": "https://api.deepseek.com/v1",
+            "key": ["sk-test"],
+            "model": "deepseek-flash",
+        }
+
+    return FakeProvider()
+
+
+async def test_cold_start_defers_services_until_providers_ready(gateway):
+    """回归：冷启动 plugin.reload() 早于 provider.initialize()，
+    装插件时解析不出 LLM 三元组——必须推迟 spawn，否则子进程带着空
+    LLM 配置落地（spawn 之后 set_env 不再生效）。"""
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+    plugin = _make_plugin(
+        endpoint, local_llm_provider_id="deepseek-responses/deepseek-flash"
+    )
+    launcher = _FakeLauncher()
+    plugin.runtime.launcher = launcher
+    # 冷启动窗口特征：provider 配置已在，运行时实例还没建
+    plugin.context.provider_manager.providers_config = [{"id": "p1"}]
+    plugin.context.get_all_providers.return_value = []
+
+    await plugin._on_loaded(SimpleNamespace())
+    assert launcher.env == {}
+    assert plugin.runtime.enabled is False
+
+    # provider 就绪后的补齐路径：注入 env 并拉起服务
+    plugin.context.get_all_providers.return_value = [_fake_provider()]
+    await plugin._on_astrbot_loaded()
+    assert launcher.env["TDAI_LLM_BASE_URL"] == "https://api.deepseek.com/v1"
+    assert launcher.env["TDAI_LLM_MODEL"] == "deepseek-flash"
+    assert plugin.runtime.enabled is True
+
+    await plugin.terminate()
+    assert launcher.shutdown_called is True
+
+
+async def test_no_provider_configured_starts_degraded(gateway):
+    """用户一个 provider 都没配：照常启动（召回/记录可用），只是提炼不可用——
+    不能因为等不到 provider 就永远不启动本地服务。"""
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+    plugin = _make_plugin(
+        endpoint, local_llm_provider_id="deepseek-responses/deepseek-flash"
+    )
+    launcher = _FakeLauncher()
+    plugin.runtime.launcher = launcher
+    plugin.context.provider_manager.providers_config = []
+    plugin.context.get_all_providers.return_value = []
+
+    await plugin._on_loaded(SimpleNamespace())
+    assert plugin.runtime.enabled is True
+    assert launcher.env == {}
+    await plugin.terminate()
+
+
+async def test_hot_reload_probes_once_and_injects_provider_env(gateway):
+    """运行期重载插件：provider 已就绪 → 立即注入 env；且每个插件加载都会
+    触发 on_plugin_loaded，本地服务只应启动一次。"""
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+    plugin = _make_plugin(
+        endpoint, local_llm_provider_id="deepseek-responses/deepseek-flash"
+    )
+    launcher = _FakeLauncher()
+    plugin.runtime.launcher = launcher
+    plugin.context.provider_manager.providers_config = [{"id": "p1"}]
+    plugin.context.get_all_providers.return_value = [_fake_provider()]
+
+    await plugin._on_loaded(SimpleNamespace())
+    await plugin._on_loaded(SimpleNamespace())  # 其它插件加载 → 本 hook 再次触发
+
+    assert plugin.runtime.enabled is True
+    assert launcher.env["TDAI_LLM_API_KEY"] == "sk-test"
+    # 只探测一次：第二次 on_plugin_loaded 不应重新 probe
+    assert len([r for r in fake.requests if r.path == "/health"]) == 1
+    await plugin.terminate()
+
+
+async def test_server_mode_probes_immediately_without_local_services(gateway):
+    """server 模式没有内嵌服务要拉，不受 provider 就绪时机影响。"""
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+    plugin = _make_plugin(endpoint, mode="server", core_api_key="real-key")
+
+    await plugin._on_loaded(SimpleNamespace())
+    assert plugin.runtime.enabled is True
+    await plugin.terminate()

@@ -20,7 +20,7 @@ AstrBot ── 本插件 ──▶ MemoryCore Gateway :8420（记忆读写）
 
 插件支持两种部署形态（`mode` 配置）：
 
-**`local`（默认）· 内嵌 standalone**：gateway（记忆内核）自动拉起；若开启 `knowledge_enabled`，知识库服务（Wiki/CodeGraph）也一并自动拉起（`external_tools/tc-memory-knowledge`），其 LLM 同样复用所选 provider。插件启动时自动拉起 `external_tools/tc-memory-gateway` 里的打包服务（Node 运行时复用 `external_tools/codegraph-win32-x64/node.exe`），数据落在 `data/plugin_data/astrbot_plugin_tc_memory/`。**仅需填 `local_llm_*` 三项**（记忆提炼要一份 LLM，用便宜的模型即可；Key 只以环境变量传给子进程，不写入文件）。若 `core_endpoint` 上已有手动启动的服务在运行，插件会直接复用而不是重复拉起。
+**`local`（默认）· 内嵌 standalone**：gateway（记忆内核）自动拉起；若开启 `knowledge_enabled`，知识库服务（Wiki/CodeGraph）也一并自动拉起（`external_tools/tc-memory-knowledge`），其 LLM 同样复用所选 provider。插件启动时自动拉起 `external_tools/tc-memory-gateway` 里的打包服务（Node 运行时复用 `external_tools/codegraph-win32-x64/node.exe`），数据落在 `data/plugin_data/astrbot_plugin_tc_memory/`。**LLM 接入选「提炼 LLM」下拉框即可**：地址/Key/模型从所选 provider 读取（记忆提炼用便宜的模型亦可；Key 只以环境变量传给子进程，不写入文件）。若 `core_endpoint` 上已有手动启动的服务在运行，插件会直接复用而不是重复拉起。
 
 **`server` · 远端服务**：连接服务器上的 Docker 部署（`deploy/global-images/start-all.sh` 启动的那套），填 `core_endpoint` / `core_api_key` / `service_id` / `team_id` / `agent_id`。
 
