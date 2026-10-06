@@ -4,7 +4,6 @@ main.py 只负责 AstrBot 对象 ↔ 纯数据的转换，所有守卫/降级/�
 """
 
 import asyncio
-import logging
 import time
 
 from .admin_key import ensure_admin_key
@@ -15,10 +14,10 @@ from .config import PluginConfig
 from .errors import TDAMAuthError, TDAMError
 from .identity import resolve_identity
 from .knowledge_client import KnowledgeClient
-from .logutil import short, vlog
+from .logutil import get_logger, short, vlog
 from .recall import perform_recall
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 AUTH_BACKOFF_SEC = 60.0
 

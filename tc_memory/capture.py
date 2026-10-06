@@ -7,12 +7,12 @@
 - 截断：Gateway 单条 content 上限 8192 字，留余量取 8000
 """
 
-import logging
 import re
 
 from .client import IsolationIds, TdMemoryClient
+from .logutil import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_CONTENT_LEN = 8000
 

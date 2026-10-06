@@ -261,3 +261,19 @@ async def test_server_mode_probes_immediately_without_local_services(gateway):
     await plugin._on_loaded(SimpleNamespace())
     assert plugin.runtime.enabled is True
     await plugin.terminate()
+
+
+async def test_plugin_logger_injected_on_init(gateway):
+    """插件 __init__ 应把 tc_memory 模块日志路由到插件专属 logger
+    （否则 WebUI 控制台看不到——LogBroker 只挂在 astrbot.plugin.* 管线上）。"""
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+    plugin = _make_plugin(endpoint)
+
+    # 注意：测试进程里 tc_memory 有两份拷贝（顶层 tc_memory.* 与包路径
+    # astrbot_plugin_tc_memory.tc_memory.*），插件用的是后者
+    import sys
+
+    logutil_mod = sys.modules["astrbot_plugin_tc_memory.tc_memory.logutil"]
+    assert logutil_mod._plugin_logger is plugin.logger
+    assert logutil_mod._plugin_logger.name == "astrbot.plugin.astrbot_plugin_tc_memory"

@@ -38,6 +38,7 @@ from .tc_memory.llm_resolve import (
     providers_pending_initialization,
     resolve_llm_from_providers,
 )
+from .tc_memory.logutil import set_plugin_logger
 from .tc_memory.runtime import PluginRuntime
 from .tc_memory.status import build_status
 
@@ -71,6 +72,9 @@ def extract_assistant_text(resp: LLMResponse) -> str:
 class TcMemoryPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
+        # 把 tc_memory 各模块的日志路由到插件专属 logger：
+        # WebUI 控制台只消费 astrbot.plugin.<name> 管线，stdlib root 只进控制台/文件
+        set_plugin_logger(self.logger)
         self.cfg = config_from_astrbot(config or {})
         core = TdMemoryClient(
             self.cfg.core_endpoint,

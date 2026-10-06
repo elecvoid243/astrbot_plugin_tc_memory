@@ -7,7 +7,6 @@
 """
 
 import asyncio
-import logging
 
 from .cache import TTLCache
 from .client import TdMemoryClient
@@ -15,9 +14,9 @@ from .config import PluginConfig
 from .errors import TDAMAuthError
 from .identity import ResolvedIdentity
 from .inject_format import render_injection, render_memory_block, render_skill_block
-from .logutil import short, vlog
+from .logutil import get_logger, short, vlog
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 PERSONA_TTL_SEC = 600.0
 SKILL_LISTING_TTL_SEC = 600.0

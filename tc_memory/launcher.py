@@ -15,14 +15,15 @@
 """
 
 import asyncio
-import logging
 import os
 import subprocess
 from pathlib import Path
 
 import aiohttp
 
-logger = logging.getLogger(__name__)
+from .logutil import get_logger
+
+logger = get_logger(__name__)
 
 NODE_REL = Path("external_tools") / "codegraph-win32-x64" / "node.exe"
 GATEWAY_REL = Path("external_tools") / "tc-memory-gateway"

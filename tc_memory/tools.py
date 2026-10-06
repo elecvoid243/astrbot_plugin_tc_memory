@@ -3,14 +3,12 @@
 约定：工具永不抛异常——失败返回友好文本，避免打断 Agent 工具循环。
 """
 
-import logging
-
 from .errors import TDAMError
 from .identity import resolve_identity
-from .logutil import short, vlog
+from .logutil import get_logger, short, vlog
 from .runtime import PluginRuntime
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _UNAVAILABLE = "记忆服务暂时不可用，请直接根据已有信息回答，稍后可重试。"
 _KNOWLEDGE_DISABLED = "知识库功能未启用（knowledge_enabled=false）。"
