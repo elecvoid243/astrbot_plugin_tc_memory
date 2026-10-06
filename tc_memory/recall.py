@@ -15,6 +15,7 @@ from .config import PluginConfig
 from .errors import TDAMAuthError
 from .identity import ResolvedIdentity
 from .inject_format import render_injection, render_memory_block, render_skill_block
+from .logutil import short, vlog
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,13 @@ async def perform_recall(
             ids, query=query, limit=cfg.recall_max_results
         )
 
+    vlog(logger, cfg, "召回 query=%r", short(query, 80))
+
     async def _persona():
         key = f"persona:{ids.team_id}:{ids.user_id}"
         cached = cache.get(key)
         if cached is not None:
+            vlog(logger, cfg, "L3 画像缓存命中")
             return cached
         value = await client.read_core(ids)
         if value:
@@ -54,6 +58,7 @@ async def perform_recall(
         key = f"skills:{ids.team_id}:{ids.agent_id}"
         cached = cache.get(key)
         if cached is not None:
+            vlog(logger, cfg, "Skill 清单缓存命中")
             return cached
         value = await client.skill_listing(ids)
         if value:
@@ -87,7 +92,30 @@ async def perform_recall(
     scenes = scenes if isinstance(scenes, list) else []
     listing = listing if isinstance(listing, str) else None
 
-    return render_injection(
+    # ── 详细日志：各路面貌 + 注入量 ──────────────────────
+    vlog(logger, cfg, "L1 命中 %d 条", len(l1_items))
+    for it in l1_items:
+        vlog(
+            logger,
+            cfg,
+            "  · %s[%s] %s",
+            it.get("id", "?"),
+            it.get("type", "-"),
+            short(it.get("content", "")),
+        )
+    vlog(logger, cfg, "L3 画像: %s", short(persona) or "(无)")
+    vlog(
+        logger,
+        cfg,
+        "L2 场景 %d 个: %s",
+        len(scenes),
+        short(", ".join(s.get("path", "?") for s in scenes), 200) or "(无)",
+    )
+    vlog(logger, cfg, "Skill 清单: %s", short(listing, 200) or "(无)")
+
+    result = render_injection(
         render_memory_block(l1_items, persona, scenes),
         render_skill_block(listing),
     )
+    vlog(logger, cfg, "注入文本 %d 字符", len(result) if result else 0)
+    return result

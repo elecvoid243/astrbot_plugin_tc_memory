@@ -7,6 +7,7 @@ import logging
 
 from .errors import TDAMError
 from .identity import resolve_identity
+from .logutil import short, vlog
 from .runtime import PluginRuntime
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ def _ids(runtime: PluginRuntime, sender_id: str, umo: str):
 async def memory_search(
     runtime: PluginRuntime, sender_id: str, umo: str, query: str
 ) -> str:
+    vlog(logger, runtime.cfg, "memory_search query=%r", short(query, 80))
     try:
         items = await runtime.core.search_atomic(_ids(runtime, sender_id, umo), query)
     except TDAMError:
@@ -38,6 +40,7 @@ async def memory_search(
 async def conversation_search(
     runtime: PluginRuntime, sender_id: str, umo: str, query: str
 ) -> str:
+    vlog(logger, runtime.cfg, "conversation_search query=%r", short(query, 80))
     try:
         items = await runtime.core.conversation_search(
             _ids(runtime, sender_id, umo), query
@@ -101,6 +104,7 @@ async def wiki_search(
         runtime, runtime.cfg.knowledge_wiki_id, "knowledge_wiki_id"
     ):
         return hint
+    vlog(logger, runtime.cfg, "wiki_search query=%r", short(query, 80))
     try:
         results = await runtime.knowledge.wiki_search(
             runtime.cfg.knowledge_wiki_id, query
@@ -119,6 +123,7 @@ async def wiki_read(runtime: PluginRuntime, sender_id: str, umo: str, path: str)
         runtime, runtime.cfg.knowledge_wiki_id, "knowledge_wiki_id"
     ):
         return hint
+    vlog(logger, runtime.cfg, "wiki_read path=%r", short(path, 80))
     try:
         pages = await runtime.knowledge.wiki_read(runtime.cfg.knowledge_wiki_id, path)
     except TDAMError:
@@ -135,6 +140,7 @@ async def codegraph_search(
         runtime, runtime.cfg.knowledge_codegraph_id, "knowledge_codegraph_id"
     ):
         return hint
+    vlog(logger, runtime.cfg, "codegraph_search query=%r", short(query, 80))
     try:
         # code-graph 查询接口返回预渲染文本，直接透传给模型
         text = await runtime.knowledge.codegraph_search(
@@ -152,6 +158,7 @@ async def codegraph_explore(
         runtime, runtime.cfg.knowledge_codegraph_id, "knowledge_codegraph_id"
     ):
         return hint
+    vlog(logger, runtime.cfg, "codegraph_explore symbol=%r", short(symbol, 80))
     try:
         text = await runtime.knowledge.codegraph_explore(
             runtime.cfg.knowledge_codegraph_id, symbol

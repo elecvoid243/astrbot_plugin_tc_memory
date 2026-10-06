@@ -35,6 +35,7 @@ class PluginConfig:
     engine_recall_max_results: int = 5
     engine_recall_score_threshold: float = 0.3
     panel_enabled: bool = True  # 内嵌管理面板（WebUI）
+    verbose_logging: bool = False  # 详细日志：召回/写入/工具的动作明细
 
 
 def config_from_astrbot(cfg: dict[str, Any]) -> PluginConfig:

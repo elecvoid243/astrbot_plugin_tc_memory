@@ -15,6 +15,7 @@ from .config import PluginConfig
 from .errors import TDAMAuthError, TDAMError
 from .identity import resolve_identity
 from .knowledge_client import KnowledgeClient
+from .logutil import short, vlog
 from .recall import perform_recall
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,15 @@ class PluginRuntime:
 
     def _mark_enabled(self) -> bool:
         self._enabled = True
+        vlog(
+            logger,
+            self.cfg,
+            "服务已启用 mode=%s 召回=%s 捕获=%s 面板=%s",
+            self.cfg.mode,
+            self.cfg.recall_enabled,
+            self.cfg.capture_enabled,
+            self.panel_launcher is not None,
+        )
         if not self.capture_supported:
             logger.warning(
                 "tc_memory: 当前 AstrBot 版本无 on_agent_done 钩子（需 >=4.23.1），"
@@ -174,6 +184,14 @@ class PluginRuntime:
             return False
         identity = resolve_identity(sender_id, unified_msg_origin, self.cfg)
         try:
+            vlog(
+                logger,
+                self.cfg,
+                "写入 L0 session=%s user=%r assistant=%r",
+                identity.session_id,
+                short(self.buffer._pending.get(identity.session_id) or ""),
+                short(assistant_text),
+            )
             return await self.buffer.flush(
                 self.core, identity.ids, identity.session_id, assistant_text
             )

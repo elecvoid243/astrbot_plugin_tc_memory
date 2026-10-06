@@ -157,6 +157,12 @@
     "description": "召回超时（秒）",
     "hint": "超时后本轮不注入任何内容，不影响正常聊天"
   },
+  "verbose_logging": {
+    "type": "bool",
+    "default": false,
+    "description": "详细日志",
+    "hint": "开启后在 AstrBot 日志中打印召回明细（命中的记忆/画像/场景）与写入内容（截断防洪水）。排查「为什么没记住/召回了什么」时打开"
+  },
   "user_id_map": {
     "type": "dict",
     "default": {},
