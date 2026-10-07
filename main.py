@@ -95,7 +95,7 @@ def extract_assistant_text(resp: LLMResponse) -> str:
     name="astrbot_plugin_tc_memory",
     desc="接入 TencentDB Agent Memory，为 AstrBot 提供跨会话长期记忆",
     author="elecvoid243",
-    version="0.1.0",
+    version="0.2.0",
 )
 class TcMemoryPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):

@@ -1,5 +1,5 @@
 name: astrbot_plugin_tc_memory
 desc: 接入 TencentDB Agent Memory，为 AstrBot 提供跨会话长期记忆（自动召回注入 + 对话捕获 + 记忆/技能/知识工具）
-version: 0.1.0
+version: 0.2.0
 author: elecvoid243
 astrbot_version: ">=4.23.1,<5"
