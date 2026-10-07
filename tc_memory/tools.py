@@ -137,7 +137,7 @@ async def codegraph_search(
         runtime, runtime.cfg.knowledge_codegraph_id, "knowledge_codegraph_id"
     ):
         return hint
-    vlog(logger, runtime.cfg, "codegraph_search query=%r", short(query, 80))
+    vlog(logger, runtime.cfg, "codegraph_kb_search query=%r", short(query, 80))
     try:
         # code-graph 查询接口返回预渲染文本，直接透传给模型
         text = await runtime.knowledge.codegraph_search(
@@ -155,7 +155,7 @@ async def codegraph_explore(
         runtime, runtime.cfg.knowledge_codegraph_id, "knowledge_codegraph_id"
     ):
         return hint
-    vlog(logger, runtime.cfg, "codegraph_explore symbol=%r", short(symbol, 80))
+    vlog(logger, runtime.cfg, "codegraph_kb_explore symbol=%r", short(symbol, 80))
     try:
         text = await runtime.knowledge.codegraph_explore(
             runtime.cfg.knowledge_codegraph_id, symbol

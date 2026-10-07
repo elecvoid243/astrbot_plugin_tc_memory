@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from migrate_isolation import migrate  # noqa: E402
+from migrate_isolation import migrate
 
 
 def build_fixture(tmp_path: Path) -> Path:
@@ -28,7 +28,9 @@ def build_fixture(tmp_path: Path) -> Path:
         )  # 不匹配 old_agent，应保留
     conn.commit()
     conn.close()
-    old_dir = gw / "profiles" / urllib.parse.quote("team:default|agent:default", safe="")
+    old_dir = (
+        gw / "profiles" / urllib.parse.quote("team:default|agent:default", safe="")
+    )
     (old_dir / "scene_blocks").mkdir(parents=True)
     (old_dir / "persona.md").write_text("画像", encoding="utf-8")
     return gw
@@ -37,9 +39,7 @@ def build_fixture(tmp_path: Path) -> Path:
 def test_migrate_updates_all_tables_and_renames_profiles(tmp_path):
     gw = build_fixture(tmp_path)
 
-    result = migrate(
-        gw, new_team="team-new", new_agent="agt-new", new_user="usr-admin"
-    )
+    result = migrate(gw, new_team="team-new", new_agent="agt-new", new_user="usr-admin")
 
     assert result["tables"] == {
         "l1_records": 1,
@@ -68,9 +68,7 @@ def test_migrate_updates_all_tables_and_renames_profiles(tmp_path):
 def test_migrate_dry_run_changes_nothing(tmp_path):
     gw = build_fixture(tmp_path)
 
-    result = migrate(
-        gw, new_team="t", new_agent="a", new_user="u", dry_run=True
-    )
+    result = migrate(gw, new_team="t", new_agent="a", new_user="u", dry_run=True)
 
     assert result["tables"]["l1_records"] == 1  # 统计照旧
     assert result["backup"] is None

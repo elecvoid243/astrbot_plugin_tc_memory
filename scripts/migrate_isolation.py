@@ -105,9 +105,7 @@ def migrate(
         result["profiles_renamed"] = f"{old_dir.name} → {new_dir.name}"
         if not dry_run:
             if new_dir.exists():
-                raise SystemExit(
-                    f"目标目录已存在，拒绝覆盖：{new_dir}（请人工合并）"
-                )
+                raise SystemExit(f"目标目录已存在，拒绝覆盖：{new_dir}（请人工合并）")
             old_dir.rename(new_dir)
     return result
 

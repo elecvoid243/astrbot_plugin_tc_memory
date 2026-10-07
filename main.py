@@ -433,8 +433,11 @@ class TcMemoryPlugin(Star):
         return await tool_impl.wiki_read(self.runtime, sender, umo, path)
 
     @filter.llm_tool()
-    async def codegraph_search(self, event: AstrMessageEvent, query: str):
-        """在代码图谱中搜索符号/文件（函数、类、模块的位置与定义）。
+    async def codegraph_kb_search(self, event: AstrMessageEvent, query: str):
+        """在知识库的代码图谱中搜索符号/文件（函数、类、模块的位置与定义）。
+
+        数据源：知识库中【已注册的仓库】（服务端索引快照），不是本机工作区。
+        若要查询本机正在开发的代码，请使用本地的 codegraph_search（需传 projectPath）。
 
         Args:
             query(string): 搜索关键词或符号名
@@ -443,8 +446,11 @@ class TcMemoryPlugin(Star):
         return await tool_impl.codegraph_search(self.runtime, sender, umo, query)
 
     @filter.llm_tool()
-    async def codegraph_explore(self, event: AstrMessageEvent, symbol: str):
-        """探索代码符号的调用关系与影响面（改了它会波及哪些文件）。
+    async def codegraph_kb_explore(self, event: AstrMessageEvent, symbol: str):
+        """探索知识库代码图谱中符号的调用关系与影响面（改了它会波及哪些文件）。
+
+        数据源：知识库中【已注册的仓库】（服务端索引快照），不是本机工作区。
+        若要分析本机正在开发的代码，请使用本地的 codegraph_explore（需传 projectPath）。
 
         Args:
             symbol(string): 符号名
