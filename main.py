@@ -67,10 +67,10 @@ AGENT_DONE_SUPPORTED = hasattr(filter, "on_agent_done")
 
 # knowledge_enabled=false 时从工具注册表移除（不注入 LLM）
 KNOWLEDGE_TOOL_NAMES = (
-    "wiki_search",
-    "wiki_read",
-    "codegraph_kb_search",
-    "codegraph_kb_explore",
+    "team_wiki_search",
+    "team_wiki_read",
+    "team_codegraph_search",
+    "team_codegraph_explore",
 )
 
 
@@ -434,8 +434,8 @@ class TcMemoryPlugin(Star):
         return await tool_impl.conversation_search(self.runtime, sender, umo, query)
 
     @filter.llm_tool()
-    async def skill_search(self, event: AstrMessageEvent, query: str):
-        """搜索可用的技能（团队共享的工作方法与流程）。
+    async def team_skill_search(self, event: AstrMessageEvent, query: str):
+        """搜索团队记忆系统中的技能（工作方法与流程，可含未装备的团队技能）。
 
         Args:
             query(string): 搜索关键词
@@ -444,8 +444,10 @@ class TcMemoryPlugin(Star):
         return await tool_impl.skill_search(self.runtime, sender, umo, query)
 
     @filter.llm_tool()
-    async def skill_view(self, event: AstrMessageEvent, name: str):
-        """加载指定技能的完整内容（先 skill_search 或直接按名称加载）。
+    async def team_skill_view(self, event: AstrMessageEvent, name: str):
+        """加载团队记忆系统中技能的完整内容（先 team_skill_search 或直接按名称加载）。
+
+        与 AstrBot 内置 SKILL.md 技能体系无关——那是读文件，这里是记忆内核资产。
 
         Args:
             name(string): 技能名称
@@ -454,7 +456,7 @@ class TcMemoryPlugin(Star):
         return await tool_impl.skill_view(self.runtime, sender, umo, name)
 
     @filter.llm_tool()
-    async def wiki_search(self, event: AstrMessageEvent, query: str):
+    async def team_wiki_search(self, event: AstrMessageEvent, query: str):
         """搜索知识库 Wiki 页面（产品文档、设计规范等结构化知识）。
 
         Args:
@@ -464,7 +466,7 @@ class TcMemoryPlugin(Star):
         return await tool_impl.wiki_search(self.runtime, sender, umo, query)
 
     @filter.llm_tool()
-    async def wiki_read(self, event: AstrMessageEvent, path: str):
+    async def team_wiki_read(self, event: AstrMessageEvent, path: str):
         """读取 Wiki 页面全文。
 
         Args:
@@ -474,7 +476,7 @@ class TcMemoryPlugin(Star):
         return await tool_impl.wiki_read(self.runtime, sender, umo, path)
 
     @filter.llm_tool()
-    async def codegraph_kb_search(self, event: AstrMessageEvent, query: str):
+    async def team_codegraph_search(self, event: AstrMessageEvent, query: str):
         """在知识库的代码图谱中搜索符号/文件（函数、类、模块的位置与定义）。
 
         数据源：知识库中【已注册的仓库】（服务端索引快照），不是本机工作区。
@@ -487,7 +489,7 @@ class TcMemoryPlugin(Star):
         return await tool_impl.codegraph_search(self.runtime, sender, umo, query)
 
     @filter.llm_tool()
-    async def codegraph_kb_explore(self, event: AstrMessageEvent, symbol: str):
+    async def team_codegraph_explore(self, event: AstrMessageEvent, symbol: str):
         """探索知识库代码图谱中符号的调用关系与影响面（改了它会波及哪些文件）。
 
         数据源：知识库中【已注册的仓库】（服务端索引快照），不是本机工作区。

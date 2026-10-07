@@ -18,7 +18,7 @@ MAX_CONTENT_LEN = 8000
 
 _CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```", re.MULTILINE)
 _INJECTION_TAG_RE = re.compile(
-    r"<(relevant-memories|available_skills|user-persona|memory-tools-guide)>"
+    r"<(relevant-memories|available_skills|team_skills|user-persona|memory-tools-guide)>"
     r"[\s\S]*?</\1>",
     re.MULTILINE,
 )

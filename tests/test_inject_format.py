@@ -50,9 +50,10 @@ def test_skill_block_empty_returns_none():
 
 def test_skill_block_wraps_listing():
     block = render_skill_block("- skill-a: 部署流程")
-    assert "<available_skills>" in block
+    assert "<team_skills>" in block
+    assert "</team_skills>" in block
     assert "- skill-a: 部署流程" in block
-    assert "skill_view" in block  # 引导 LLM 用我们的工具加载 skill
+    assert "team_skill_view" in block  # 引导 LLM 用我们的工具加载 skill
 
 
 def test_render_injection_skill_before_memory():

@@ -65,7 +65,7 @@ async def test_perform_recall_full_injection():
     assert "下周一发版" in text
     assert "<user-persona>" in text
     assert "scene_blocks/payment.md" in text
-    assert "<available_skills>" in text
+    assert "<team_skills>" in text
 
 
 async def test_empty_query_skips_search():
@@ -74,7 +74,7 @@ async def test_empty_query_skips_search():
     assert client.calls["search"] == 0
     # 其余三路照常：画像/场景/skill 仍注入
     assert "<user-persona>" in text
-    assert "<available_skills>" in text
+    assert "<team_skills>" in text
 
 
 async def test_single_failure_degrades_to_remaining():

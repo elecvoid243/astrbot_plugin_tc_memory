@@ -297,16 +297,16 @@ async def test_knowledge_tools_pruned_when_disabled(gateway):
     )
 
     names = {t.name for t in llm_tools.func_list}
-    assert "wiki_search" not in names
-    assert "wiki_read" not in names
-    assert "codegraph_kb_search" not in names
-    assert "codegraph_kb_explore" not in names
+    assert "team_wiki_search" not in names
+    assert "team_wiki_read" not in names
+    assert "team_codegraph_search" not in names
+    assert "team_codegraph_explore" not in names
     # 基础记忆工具保留
     assert {
         "memory_search",
         "conversation_search",
-        "skill_search",
-        "skill_view",
+        "team_skill_search",
+        "team_skill_view",
     } <= names
     await plugin.terminate()
 
@@ -331,9 +331,9 @@ async def test_knowledge_tools_kept_when_enabled(gateway):
 
     names = {t.name for t in llm_tools.func_list}
     assert {
-        "wiki_search",
-        "wiki_read",
-        "codegraph_kb_search",
-        "codegraph_kb_explore",
+        "team_wiki_search",
+        "team_wiki_read",
+        "team_codegraph_search",
+        "team_codegraph_explore",
     } <= names
     await plugin.terminate()

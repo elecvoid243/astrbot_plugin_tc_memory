@@ -9,6 +9,8 @@
 与 openclaw 版（tdai_*）不同——模型看到的是真实可调用的工具。
 """
 
+import re
+
 # 工具调用预算提示：防止模型在记忆工具上无限重试（对齐官方插件的 3 次限制）
 _TOOLS_GUIDE = """<memory-tools-guide>
 当上方注入的记忆不足以回答时，可主动调用工具获取更多信息：
@@ -48,15 +50,40 @@ def render_memory_block(
     return "\n\n".join(parts)
 
 
+def sanitize_listing(text: str) -> str:
+    """对服务端预渲染的技能清单做消毒（幂等、容忍改版）：
+
+    1. 标题 `## Skills` → `## Team Skills`：与 AstrBot 原生「## Skills」段区分
+    2. `skill_view(` → `team_skill_view(`：防止指向未注册的旧工具名
+    3. 删除 `skill_manage(...)` 悬空引用（本插件从未注册该工具）
+    4. 剥掉服务端内层 `<available_skills>` 标签（避免与本插件外层双重嵌套）
+    """
+    if not text:
+        return text
+    text = text.replace("## Skills (mandatory)", "## Team Skills (mandatory)")
+    text = text.replace("skill_view(", "team_skill_view(")
+    text = re.sub(r"[^\n]*skill_manage[^\n]*\n?", "", text)
+    text = text.replace("<available_skills>", "").replace("</available_skills>", "")
+    return text
+
+
 def render_skill_block(listing_text: str | None) -> str | None:
-    """包装服务端预渲染的 skill 清单；为空 → None。"""
+    """包装服务端技能清单为 <team_skills> 块；为空 → None。
+
+    文案明确与 AstrBot 内置 SKILL.md 技能体系区分（那是文件读取，
+    这里是记忆系统的内核资产，用 team_skill_view 加载全文）。
+    """
     if not listing_text or not listing_text.strip():
         return None
+    cleaned = sanitize_listing(listing_text).strip()
+    if not cleaned:
+        return None
     return (
-        "<available_skills>\n"
-        "以下是为你装备的技能。若有与当前任务相关的，先用 skill_view 加载再行动。\n\n"
-        f"{listing_text.strip()}\n"
-        "</available_skills>"
+        "<team_skills>\n"
+        "以下是团队记忆系统装备的技能（独立于 AstrBot 内置 SKILL.md 技能）。\n"
+        "相关时用 team_skill_view 加载全文；也可用 team_skill_search 检索团队技能。\n\n"
+        f"{cleaned}\n"
+        "</team_skills>"
     )
 
 
