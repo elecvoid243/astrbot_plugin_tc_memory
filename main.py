@@ -45,6 +45,14 @@ from .tc_memory.status import build_status
 # 版本兼容：on_agent_done 需要 AstrBot >= 4.23.1
 AGENT_DONE_SUPPORTED = hasattr(filter, "on_agent_done")
 
+# knowledge_enabled=false 时从工具注册表移除（不注入 LLM）
+KNOWLEDGE_TOOL_NAMES = (
+    "wiki_search",
+    "wiki_read",
+    "codegraph_kb_search",
+    "codegraph_kb_explore",
+)
+
 
 def build_injection_part(text: str, persist: bool) -> TextPart:
     """构造注入内容块。persist=False（默认）时标记不落盘，
@@ -108,6 +116,8 @@ class TcMemoryPlugin(Star):
         # 本地服务只启动一次：on_plugin_loaded 会随每个插件加载重复触发
         self._local_services_started = False
 
+        self._prune_disabled_tools()
+
         # Dashboard「服务状态」popover 数据源：
         # GET /api/v1/plugins/extensions/astrbot_plugin_tc_memory/status
         context.register_web_api(
@@ -115,6 +125,23 @@ class TcMemoryPlugin(Star):
             self.web_status,
             ["GET"],
             "Agent Memory 服务状态",
+        )
+
+    def _prune_disabled_tools(self) -> None:
+        """knowledge_enabled=false 时，把 4 个知识工具从注册表中移除——
+        不注入 LLM（而不是注入空壳工具回提示文本）。
+
+        @filter.llm_tool 在模块导入期注册，早于 __init__；插件重载时
+        star_manager 按模块路径清理旧工具，故此处移除不会跨重载泄漏。
+        """
+        if self.cfg.knowledge_enabled:
+            return
+        manager = self.context.get_llm_tool_manager()
+        for name in KNOWLEDGE_TOOL_NAMES:
+            manager.remove_func(name)
+        logger.info(
+            "tc_memory: 知识库未启用，已跳过 %d 个知识工具注册",
+            len(KNOWLEDGE_TOOL_NAMES),
         )
 
     async def web_status(self):
@@ -366,8 +393,8 @@ class TcMemoryPlugin(Star):
             await self.runtime.knowledge.aclose()
 
     # ── LLM 工具（薄封装，业务逻辑在 tc_memory/tools.py）──────────────
-    # 知识系 4 个工具始终注册；knowledge_enabled=false 时返回提示文本。
-    # （条件注册会让 schema 随配置闪变，破坏 provider 侧前缀缓存）
+    # 注意：全部 8 个在导入期注册；knowledge_enabled=false 时 __init__
+    # 会将知识系 4 个移除（见 _prune_disabled_tools），LLM 不可见。
 
     def _ctx(self, event: AstrMessageEvent) -> tuple[str, str]:
         return event.get_sender_id(), event.unified_msg_origin

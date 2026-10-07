@@ -277,3 +277,63 @@ async def test_plugin_logger_injected_on_init(gateway):
     logutil_mod = sys.modules["astrbot_plugin_tc_memory.tc_memory.logutil"]
     assert logutil_mod._plugin_logger is plugin.logger
     assert logutil_mod._plugin_logger.name == "astrbot.plugin.astrbot_plugin_tc_memory"
+
+
+async def test_knowledge_tools_pruned_when_disabled(gateway):
+    """knowledge_enabled=false：4 个知识工具从注册表移除，不注入 LLM。"""
+    import importlib
+
+    from astrbot.core.provider.register import llm_tools
+
+    main_mod = import_plugin_main()
+    importlib.reload(main_mod)  # 重新执行装饰器，恢复全部 8 个工具
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+
+    ctx = MagicMock()
+    ctx.get_llm_tool_manager = lambda: llm_tools  # 接回真实注册表，让 prune 生效
+    plugin = main_mod.TcMemoryPlugin(
+        context=ctx, config={"core_endpoint": endpoint, "knowledge_enabled": False}
+    )
+
+    names = {t.name for t in llm_tools.func_list}
+    assert "wiki_search" not in names
+    assert "wiki_read" not in names
+    assert "codegraph_kb_search" not in names
+    assert "codegraph_kb_explore" not in names
+    # 基础记忆工具保留
+    assert {
+        "memory_search",
+        "conversation_search",
+        "skill_search",
+        "skill_view",
+    } <= names
+    await plugin.terminate()
+
+
+async def test_knowledge_tools_kept_when_enabled(gateway):
+    """knowledge_enabled=true：4 个知识工具保留注册。"""
+    import importlib
+
+    from astrbot.core.provider.register import llm_tools
+
+    main_mod = import_plugin_main()
+    importlib.reload(main_mod)
+    fake, endpoint = gateway
+    fake.add("GET", "/health", {"status": "ok"})
+
+    ctx = MagicMock()
+    ctx.get_llm_tool_manager = lambda: llm_tools
+    plugin = main_mod.TcMemoryPlugin(
+        context=ctx,
+        config={"core_endpoint": endpoint, "knowledge_enabled": True},
+    )
+
+    names = {t.name for t in llm_tools.func_list}
+    assert {
+        "wiki_search",
+        "wiki_read",
+        "codegraph_kb_search",
+        "codegraph_kb_explore",
+    } <= names
+    await plugin.terminate()
