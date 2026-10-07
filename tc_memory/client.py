@@ -214,6 +214,21 @@ class TdMemoryClient:
         data = await self._post("/v3/meta/auth/verify", {"user_key": user_key})
         return bool(data.get("valid"))
 
+    async def meta_user_of_key(self, user_key: str) -> dict | None:
+        """取 user_key 对应的用户（无效返回 None）。"""
+        data = await self._post("/v3/meta/auth/verify", {"user_key": user_key})
+        return data.get("user") if data.get("valid") else None
+
+    async def meta_team_list(self) -> list[dict]:
+        data = await self._post("/v3/meta/team/list", {"limit": 20})
+        return data.get("items") or []
+
+    async def meta_agent_list(self, team_id: str, limit: int = 20) -> list[dict]:
+        data = await self._post(
+            "/v3/meta/agent/list", {"team_id": team_id, "limit": limit}
+        )
+        return data.get("items") or []
+
     async def internal_init_admin(self, username: str, user_key: str) -> dict:
         """初始化 system_admin（仅 Bearer 鉴权的运维接口；重复初始化报 409）。"""
         return await self._post(

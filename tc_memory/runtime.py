@@ -7,12 +7,13 @@ import asyncio
 import time
 
 from .admin_key import ensure_admin_key
+from .align import resolve_panel_identities
 from .cache import TTLCache
 from .capture import CaptureBuffer
 from .client import TdMemoryClient
 from .config import PluginConfig
 from .errors import TDAMAuthError, TDAMError
-from .identity import resolve_identity
+from .identity import ResolvedIdentity, resolve_identity
 from .knowledge_client import KnowledgeClient
 from .logutil import get_logger, short, vlog
 from .recall import perform_recall
@@ -52,6 +53,8 @@ class PluginRuntime:
         # local 模式 admin key 持久化文件（None 则不引导）
         self.admin_key_file = admin_key_file
         self.admin_key: str | None = None
+        # local 模式对齐面板后的隔离三元组（None=未对齐，用配置值）
+        self.adopted_ids = None
         self._enabled = False
         self._auth_backoff_until = 0.0
 
@@ -91,6 +94,41 @@ class PluginRuntime:
         await self._ensure_knowledge()
         return self._mark_enabled()
 
+    def identity_for(self, sender_id: str, unified_msg_origin: str) -> ResolvedIdentity:
+        """对齐面板后统一用面板桶（team/agent/admin user）；否则按配置+发送者映射。"""
+        if self.adopted_ids is not None:
+            return ResolvedIdentity(ids=self.adopted_ids, session_id=unified_msg_origin)
+        return resolve_identity(sender_id, unified_msg_origin, self.cfg)
+
+    async def _adopt_panel_identities(self) -> None:
+        """local 模式：读取面板默认 team/agent/admin user 作为自己的隔离三元组。
+
+        面板按 (team, agent, owner_user) 查数据面；不对齐则面板永远显示 0。
+        """
+        if self.admin_key is None:
+            return
+        try:
+            ids = await resolve_panel_identities(self.core, self.admin_key)
+        except TDAMError as e:
+            logger.warning("tc_memory: 面板身份对齐失败: %s", e.message[:80])
+            return
+        if ids is None:
+            vlog(
+                logger,
+                self.cfg,
+                "面板身份未就绪（无 team/agent），继续使用配置三元组 team=%s agent=%s",
+                self.cfg.team_id,
+                self.cfg.agent_id,
+            )
+            return
+        self.adopted_ids = ids
+        logger.info(
+            "tc_memory: 已对齐面板身份 team=%s agent=%s user=%s",
+            ids.team_id,
+            ids.agent_id,
+            ids.user_id,
+        )
+
     async def _bootstrap_admin_key(self) -> None:
         """local 模式：确保本地实例有可用 admin key（面板登录用）。失败不阻塞。"""
         if self.cfg.mode != "local" or self.admin_key_file is None:
@@ -105,6 +143,7 @@ class PluginRuntime:
                 )
         except TDAMError as e:
             logger.warning("tc_memory: admin key 引导失败: %s", e.message[:80])
+        await self._adopt_panel_identities()
 
     async def _ensure_knowledge(self) -> None:
         if self.knowledge_launcher is not None and not (
@@ -155,7 +194,7 @@ class PluginRuntime:
         """召回守卫 + 执行；任何失败返回 None（本轮不注入）。"""
         if self._blocked() or not self.cfg.recall_enabled:
             return None
-        identity = resolve_identity(sender_id, unified_msg_origin, self.cfg)
+        identity = self.identity_for(sender_id, unified_msg_origin)
         try:
             return await asyncio.wait_for(
                 perform_recall(self.core, self.cache, identity, prompt, self.cfg),
@@ -181,7 +220,7 @@ class PluginRuntime:
             or not self.capture_supported
         ):
             return False
-        identity = resolve_identity(sender_id, unified_msg_origin, self.cfg)
+        identity = self.identity_for(sender_id, unified_msg_origin)
         try:
             vlog(
                 logger,

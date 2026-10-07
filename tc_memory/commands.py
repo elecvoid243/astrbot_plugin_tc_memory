@@ -6,7 +6,6 @@
 import time
 
 from .errors import TDAMError
-from .identity import resolve_identity
 from .runtime import PluginRuntime
 
 _UNAVAILABLE = (
@@ -18,7 +17,7 @@ _UNAVAILABLE = (
 
 
 def _identity(runtime: PluginRuntime, sender_id: str, umo: str):
-    return resolve_identity(sender_id, umo, runtime.cfg)
+    return runtime.identity_for(sender_id, umo)
 
 
 async def cmd_search(

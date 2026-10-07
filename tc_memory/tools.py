@@ -4,7 +4,6 @@
 """
 
 from .errors import TDAMError
-from .identity import resolve_identity
 from .logutil import get_logger, short, vlog
 from .runtime import PluginRuntime
 
@@ -15,7 +14,7 @@ _KNOWLEDGE_DISABLED = "知识库功能未启用（knowledge_enabled=false）。"
 
 
 def _ids(runtime: PluginRuntime, sender_id: str, umo: str):
-    return resolve_identity(sender_id, umo, runtime.cfg).ids
+    return runtime.identity_for(sender_id, umo).ids
 
 
 async def memory_search(

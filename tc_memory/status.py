@@ -30,8 +30,15 @@ async def build_status(runtime: PluginRuntime) -> dict:
     if panel_launcher is not None:
         panel_running = await panel_launcher._healthy()
 
+    adopted = getattr(runtime, "adopted_ids", None)
     return {
         "user_key": runtime.admin_key,
+        "isolation": {
+            "team_id": adopted.team_id if adopted else runtime.cfg.team_id,
+            "agent_id": adopted.agent_id if adopted else runtime.cfg.agent_id,
+            "user_id": adopted.user_id if adopted else None,
+            "aligned_to_panel": adopted is not None,
+        },
         "panel_running": panel_running,
         "mode": runtime.cfg.mode,
         "enabled": runtime.enabled,
