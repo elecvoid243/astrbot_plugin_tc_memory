@@ -26,14 +26,19 @@ class StubMeta:
             else user
         )
 
-    async def meta_team_list(self):
-        return self._teams
-
-    async def meta_agent_list(self, team_id):
-        return self._agents
+    def __init_extra__(self):
+        pass
 
     async def meta_user_of_key(self, user_key):
         return self._user
+
+    async def meta_team_list(self, user_id, user_key):
+        assert user_id and user_key  # 真实契约：body 带 user_id、header 带 user-key
+        return self._teams
+
+    async def meta_agent_list(self, team_id, user_key):
+        assert team_id and user_key
+        return self._agents
 
 
 async def test_resolve_panel_identities_full():

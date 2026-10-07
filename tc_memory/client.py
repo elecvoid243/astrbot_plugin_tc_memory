@@ -57,11 +57,17 @@ class TdMemoryClient:
             "x-tdai-service-id": self._service_id,
         }
 
-    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    async def _post(
+        self, path: str, body: dict[str, Any], user_key: str | None = None
+    ) -> dict[str, Any]:
         session = await self._get_session()
         url = f"{self._endpoint}{path}"
+        headers = self._headers()
+        if user_key:
+            # meta 面的非豁免路由要求 x-tdai-user-key（auth/verify 除外）
+            headers["x-tdai-user-key"] = user_key
         try:
-            async with session.post(url, json=body, headers=self._headers()) as resp:
+            async with session.post(url, json=body, headers=headers) as resp:
                 if resp.status in (401, 403):
                     raise TDAMAuthError(resp.status, f"鉴权失败 HTTP {resp.status}")
                 if resp.status >= 500:
@@ -219,13 +225,21 @@ class TdMemoryClient:
         data = await self._post("/v3/meta/auth/verify", {"user_key": user_key})
         return data.get("user") if data.get("valid") else None
 
-    async def meta_team_list(self) -> list[dict]:
-        data = await self._post("/v3/meta/team/list", {"limit": 20})
+    async def meta_team_list(self, user_id: str, user_key: str) -> list[dict]:
+        """列用户所属团队。契约：body 带 user_id + header x-tdai-user-key
+        （缺任一 → 400/401）。"""
+        data = await self._post(
+            "/v3/meta/team/list", {"user_id": user_id, "limit": 20}, user_key=user_key
+        )
         return data.get("items") or []
 
-    async def meta_agent_list(self, team_id: str, limit: int = 20) -> list[dict]:
+    async def meta_agent_list(
+        self, team_id: str, user_key: str, limit: int = 20
+    ) -> list[dict]:
         data = await self._post(
-            "/v3/meta/agent/list", {"team_id": team_id, "limit": limit}
+            "/v3/meta/agent/list",
+            {"team_id": team_id, "limit": limit},
+            user_key=user_key,
         )
         return data.get("items") or []
 

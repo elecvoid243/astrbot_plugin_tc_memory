@@ -20,18 +20,25 @@ logger = logging.getLogger(__name__)
 async def resolve_panel_identities(
     client: TdMemoryClient, admin_user_key: str
 ) -> IsolationIds | None:
-    teams = await client.meta_team_list()
-    if not teams:
-        return None
-    team_id = teams[0].get("team_id") or ""
-    agents = await client.meta_agent_list(team_id)
-    if not agents:
-        return None
-    agent_id = agents[0].get("agent_id") or ""
+    # 顺序有讲究：auth/verify 免 user-key 头，先拿 user_id；team/list 需要
+    # body.user_id + header x-tdai-user-key 两者齐备（缺任一 → 400/401）
     user = await client.meta_user_of_key(admin_user_key)
     if not user:
         return None
     user_id = user.get("user_id") or ""
-    if not (team_id and agent_id and user_id):
+    if not user_id:
+        return None
+
+    teams = await client.meta_team_list(user_id, admin_user_key)
+    if not teams:
+        return None
+    team_id = teams[0].get("team_id") or ""
+
+    agents = await client.meta_agent_list(team_id, admin_user_key)
+    if not agents:
+        return None
+    agent_id = agents[0].get("agent_id") or ""
+
+    if not (team_id and agent_id):
         return None
     return IsolationIds(team_id=team_id, agent_id=agent_id, user_id=user_id)

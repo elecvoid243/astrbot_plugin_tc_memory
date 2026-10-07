@@ -126,3 +126,31 @@ async def test_conversation_count(gateway):
     assert await client.conversation_count(IDS, session_id="s1") == 42
     assert fake.requests[0].body["session_id"] == "s1"
     await client.aclose()
+
+
+async def test_meta_team_list_sends_user_key_header_and_user_id_body(gateway):
+    fake, endpoint = gateway
+    fake.ok("/v3/meta/team/list", {"items": [{"team_id": "t1"}]})
+    client = make_client(endpoint)
+
+    teams = await client.meta_team_list("usr-1", "sk-mem-x")
+
+    assert teams == [{"team_id": "t1"}]
+    req = fake.requests[0]
+    assert req.headers["x-tdai-user-key"] == "sk-mem-x"
+    assert req.body["user_id"] == "usr-1"
+    await client.aclose()
+
+
+async def test_meta_agent_list_sends_user_key_header(gateway):
+    fake, endpoint = gateway
+    fake.ok("/v3/meta/agent/list", {"items": [{"agent_id": "a1"}]})
+    client = make_client(endpoint)
+
+    agents = await client.meta_agent_list("t1", "sk-mem-x")
+
+    assert agents == [{"agent_id": "a1"}]
+    req = fake.requests[0]
+    assert req.headers["x-tdai-user-key"] == "sk-mem-x"
+    assert req.body["team_id"] == "t1"
+    await client.aclose()
