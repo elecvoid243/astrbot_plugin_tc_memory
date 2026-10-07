@@ -21,7 +21,7 @@ def short(text: str | None, limit: int = SHORT_LIMIT) -> str:
 def vlog(logger: logging.Logger, cfg, msg: str, *args) -> None:
     """cfg.verbose_logging 开启时才输出 INFO。"""
     if getattr(cfg, "verbose_logging", False):
-        logger.info("[verbose] " + msg, *args)
+        logger.info("[tc_memory] " + msg, *args)
 
 
 # ── 插件 logger 路由 ─────────────────────────────────────────
