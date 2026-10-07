@@ -42,6 +42,26 @@ from .tc_memory.logutil import set_plugin_logger
 from .tc_memory.runtime import PluginRuntime
 from .tc_memory.status import build_status
 
+PANEL_PORT = 8125
+
+
+def build_knowledge_env(cfg, data_dir: Path) -> dict[str, str]:
+    """知识库服务的启动环境。
+
+    TMC_CALLBACK_URL（=面板地址）是「索引完成 → ready 回调 → 自动登记
+    meta 资产」闭环的关键：缺失时 KS 回调静默跳过，图谱建好但面板搜索
+    报「知识库不存在或已被删除」。仅面板启用时设置。
+    """
+    env = {
+        "KNOWLEDGE_DATA_DIR": str(data_dir / "knowledge-data"),
+        "KNOWLEDGE_DB_PATH": str(data_dir / "knowledge-data" / "knowledge.db"),
+        "LLM_MODE": "custom",
+    }
+    if cfg.panel_enabled:
+        env["TMC_CALLBACK_URL"] = f"http://127.0.0.1:{PANEL_PORT}"
+    return env
+
+
 # 版本兼容：on_agent_done 需要 AstrBot >= 4.23.1
 AGENT_DONE_SUPPORTED = hasattr(filter, "on_agent_done")
 
@@ -224,11 +244,7 @@ class TcMemoryPlugin(Star):
             / "plugin_data"
             / "astrbot_plugin_tc_memory"
         )
-        env = {
-            "KNOWLEDGE_DATA_DIR": str(data_dir / "knowledge-data"),
-            "KNOWLEDGE_DB_PATH": str(data_dir / "knowledge-data" / "knowledge.db"),
-            "LLM_MODE": "custom",
-        }
+        env = build_knowledge_env(self.cfg, data_dir)
         if endpoint.port:
             env["PORT"] = str(endpoint.port)
         return LocalGatewayLauncher(
@@ -238,8 +254,6 @@ class TcMemoryPlugin(Star):
             health_url=f"{self.cfg.knowledge_endpoint.rstrip('/')}/health",
             log_path=data_dir / "knowledge.log",
         )
-
-    PANEL_PORT = 8125
 
     def _build_panel_launcher(self) -> LocalGatewayLauncher | None:
         """local 模式 + panel_enabled：内嵌管理面板（WebUI）。
@@ -266,7 +280,7 @@ class TcMemoryPlugin(Star):
             command=[str(node_exe), str(panel_dir / "dist" / "index.js")],
             cwd=panel_dir,
             env={
-                "PORT": str(self.PANEL_PORT),
+                "PORT": str(PANEL_PORT),
                 "UI_DIST_DIR": str(panel_dir / "web-dist"),
                 "METADATA_INSTANCES_CONFIG": str(instances_file),
                 "KNOWLEDGE_SERVICE_URL": self.cfg.knowledge_endpoint,
@@ -274,7 +288,7 @@ class TcMemoryPlugin(Star):
                 "KNOWLEDGE_LLM_BINDING_SYNC": "false",
                 "LOG_FORMAT": "pretty",
             },
-            health_url=f"http://127.0.0.1:{self.PANEL_PORT}/",
+            health_url=f"http://127.0.0.1:{PANEL_PORT}/",
             log_path=data_dir / "panel.log",
         )
 
