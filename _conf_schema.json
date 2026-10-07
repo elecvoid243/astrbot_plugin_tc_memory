@@ -141,9 +141,9 @@
   },
   "persist_injected_memory": {
     "type": "bool",
-    "default": false,
+    "default": true,
     "description": "注入记忆写入历史",
-    "hint": "关闭（默认）：上下文干净、遗忘立即生效，适合按 token 计费的公网 API；开启：历史字节稳定、前缀 KV 缓存命中率最大，适合自建推理服务（vLLM/SGLang）"
+    "hint": "开启（默认）：注入块写入会话历史，历史 append-only、前缀 KV 缓存命中率最大，适合自建推理服务（vLLM/SGLang）；关闭：上下文干净、遗忘立即生效、省 token，适合按 token 计费的公网 API"
   },
   "recall_max_results": {
     "type": "int",

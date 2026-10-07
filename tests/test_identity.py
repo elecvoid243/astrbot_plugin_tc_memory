@@ -8,7 +8,7 @@ def test_config_defaults_local_mode():
     assert cfg.core_endpoint == "http://127.0.0.1:8420"
     assert cfg.team_id == "default"
     assert cfg.recall_enabled is True
-    assert cfg.persist_injected_memory is False
+    assert cfg.persist_injected_memory is True
     assert cfg.recall_max_results == 5
     assert cfg.recall_timeout_sec == 3
     assert cfg.user_id_map == {}

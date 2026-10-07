@@ -44,18 +44,18 @@ git clone <本仓库地址> astrbot_plugin_tc_memory
 | `core_api_key` | `local` | server 模式填真实 Key |
 | `team_id` / `agent_id` | `default` | server 模式填面板创建的 ID |
 | `recall_enabled` / `capture_enabled` | `true` | 召回注入 / 对话写回开关 |
-| `persist_injected_memory` | `false` | 注入的记忆是否写入会话历史，见下表 |
+| `persist_injected_memory` | `true` | 注入的记忆是否写入会话历史，见下表 |
 | `knowledge_enabled` | `false` | 启用 Wiki/CodeGraph 工具 |
 | `knowledge_wiki_id` / `knowledge_codegraph_id` | 空 | 知识实例 ID（面板创建后获得） |
 | `user_id_map` | `{}` | AstrBot 用户 → 记忆用户的映射（可选） |
 
 ### `persist_injected_memory` 怎么选
 
-| | 关闭（默认） | 开启 |
+| | 开启（默认） | 关闭 |
 |---|---|---|
-| 上下文 | 每轮只有最新召回，干净 | 历史逐轮堆积记忆块 |
-| 前缀 KV 缓存 | 注入点后缓存失效 | append-only，命中率最大 |
-| 适用 | 公网 API（按 token 计费） | 自建推理（vLLM/SGLang） |
+| 上下文 | 历史逐轮堆积记忆块 | 每轮只有最新召回，干净 |
+| 前缀 KV 缓存 | 历史 append-only，命中率最大 | 注入点后缓存失效 |
+| 适用 | 自建推理（vLLM/SGLang） | 公网 API（按 token 计费） |
 
 ### 身份与隔离
 
@@ -77,7 +77,7 @@ git clone <本仓库地址> astrbot_plugin_tc_memory
 
 1. `/memory status` 显示服务 ok
 2. `/memory remember 我叫小明` → 聊几句别的 → 问「我叫什么」→ 命中
-3. 查 AstrBot 会话历史：默认注入块未落盘；开 `persist_injected_memory` 后落盘
+3. 查 AstrBot 会话历史：默认注入块落盘（前缀 KV 缓存友好）；关 `persist_injected_memory` 后不落盘
 4. 停掉记忆服务 → 聊天不受影响；`/memory status` 给出启动指引
 
 ## 开发

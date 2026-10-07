@@ -22,7 +22,7 @@ class PluginConfig:
     knowledge_codegraph_id: str = ""
     recall_enabled: bool = True
     capture_enabled: bool = True
-    persist_injected_memory: bool = False
+    persist_injected_memory: bool = True  # 默认落盘：历史 append-only，前缀 KV 缓存收益最大
     recall_max_results: int = 5
     recall_timeout_sec: int = 3
     user_id_map: dict = field(default_factory=dict)

@@ -83,8 +83,8 @@ async def test_on_plugin_loaded_accepts_metadata_and_enables(gateway):
     await plugin.terminate()
 
 
-async def test_llm_request_hook_injects_temp_part(gateway):
-    """I3：真 ProviderRequest 走完整召回注入链路，默认不落盘。"""
+async def test_llm_request_hook_injects_persisted_part(gateway):
+    """I3：真 ProviderRequest 走完整召回注入链路，默认落盘（不标记 _no_save）。"""
     fake, endpoint = gateway
     fake.add("GET", "/health", {"status": "ok"})
     fake.ok(
@@ -104,12 +104,12 @@ async def test_llm_request_hook_injects_temp_part(gateway):
     assert len(req.extra_user_content_parts) == 1
     part = req.extra_user_content_parts[0]
     assert "喜欢咖啡" in part.text
-    assert part._no_save is True  # 默认不落盘
+    assert part._no_save is False  # 默认落盘：留在历史里，前缀 KV 缓存受益
     await plugin.terminate()
 
 
-async def test_llm_request_hook_persist_mode_unmarked(gateway):
-    """persist_injected_memory=true 时不标记 _no_save。"""
+async def test_llm_request_hook_marks_temp_when_persist_disabled(gateway):
+    """persist_injected_memory=false（显式关闭）时标记 _no_save，不进历史。"""
     fake, endpoint = gateway
     fake.add("GET", "/health", {"status": "ok"})
     fake.ok(
@@ -119,14 +119,14 @@ async def test_llm_request_hook_persist_mode_unmarked(gateway):
     fake.ok("/v3/core/read", {})
     fake.ok("/v3/scenario/ls", {"entries": []})
     fake.ok("/v3/skill/listing", {"listing": ""})
-    plugin = _make_plugin(endpoint, persist_injected_memory=True)
+    plugin = _make_plugin(endpoint, persist_injected_memory=False)
     await plugin._on_loaded(SimpleNamespace())
 
     event = SimpleNamespace(get_sender_id=lambda: "qq_1", unified_msg_origin="qq:F:1")
     req = ProviderRequest(prompt="q")
     await plugin.on_llm_request_hook(event, req)
 
-    assert req.extra_user_content_parts[0]._no_save is False
+    assert req.extra_user_content_parts[0]._no_save is True
     await plugin.terminate()
 
 

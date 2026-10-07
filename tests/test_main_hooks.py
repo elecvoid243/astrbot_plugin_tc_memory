@@ -15,16 +15,18 @@ build_injection_part = _main.build_injection_part
 extract_assistant_text = _main.extract_assistant_text
 
 
-def test_build_injection_part_marks_temp_by_default():
-    part = build_injection_part("记忆内容", persist=False)
+def test_build_injection_part_persist_mode_not_marked():
+    """落盘（现为默认路径）：不标记 _no_save，注入块留在会话历史。"""
+    part = build_injection_part("记忆内容", persist=True)
     assert isinstance(part, TextPart)
     assert part.text == "记忆内容"
-    assert part._no_save is True
-
-
-def test_build_injection_part_persist_mode_not_marked():
-    part = build_injection_part("记忆内容", persist=True)
     assert part._no_save is False
+
+
+def test_build_injection_part_marks_temp_when_persist_disabled():
+    """显式关闭落盘：标记 _no_save，注入块不进历史。"""
+    part = build_injection_part("记忆内容", persist=False)
+    assert part._no_save is True
 
 
 def test_extract_assistant_text_from_result_chain():
